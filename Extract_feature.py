@@ -5,7 +5,7 @@ from scipy import signal
 from scipy.fftpack import dct
 
 # extract logmag-spectrogram
-def extract_stft(wav_file_path, window_duration=0.04, window_shift=0.02, n_remain=400, option="cutoff"):
+def extract_stft(wav_file_path, window_duration=0.04, window_shift=0.02, n_remain=400, option="cutoff_stft"):
     # read
     wav_data, wav_fs = sf.read(wav_file_path)   # 10s, single channel
     # spectrogram
@@ -16,7 +16,7 @@ def extract_stft(wav_file_path, window_duration=0.04, window_shift=0.02, n_remai
                 nperseg=window_length, noverlap=window_overlap, nfft=window_length,
                 detrend=False, return_onesided=True, mode='magnitude')
     stftX = np.swapaxes(X,0,1)                  # [f, frames] -> [frames,f]
-    if option=="cutoff":
+    if option=="cutoff_stft":
         return np.log10(stftX[:,:n_remain])     # [frames, 400]
     else:
         return np.log10(stftX)                  # [frames, f]

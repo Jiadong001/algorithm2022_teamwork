@@ -1,8 +1,8 @@
 Steps:
 - [x] 频域特征提取
 - [ ] 特征增强,归一化?
-- [ ] 独立特征MFCC做 Kmeans (flatten all frames' mfcc)
-- [ ] 独立特征MFCC做 GMM , diag/full covariance
+- [x] 独立特征MFCC做 Kmeans (flatten all frames' mfcc)
+- [x] 独立特征MFCC做 GMM , diag/full covariance
 - [ ] 做 DNN, 先MFCC，再底层特征fbanks/stft/signal
 
 Settings:
@@ -25,4 +25,4 @@ Features of one wav file:
   - mfcc: 499frames*13=6500
 - one wav -> 10 segments(for example) -> 10 features
   - one feature -> model -> one score
-  - 10 features -> model -> 10 scores -> mean score
+  - 10 features -> model -> 10 scores -> vote
