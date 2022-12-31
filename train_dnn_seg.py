@@ -67,7 +67,7 @@ class Audio_Dataset(torch.utils.data.Dataset):
             if configs["model_type"]=="dnn":
                 feature = feature.reshape(n_seg, -1)                        # [10, frames*n_features] (flatten)
                 feature_list.append(np.expand_dims(feature, axis=0))        # [1, 10, frames*n_features]
-            elif configs["model_type"]=="cnn":
+            elif configs["model_type"]=="cnn" or configs["model_type"]=="cnn2":
                 feature_list.append(np.expand_dims(feature, axis=0))        # [1, 10, frames, n_features]
         self.feature_array = np.concatenate(feature_list, axis=0)
         print(self.feature_array.shape)
@@ -132,8 +132,15 @@ def train_step(model, data_loader, configs, device):
     # for feature_list, label_list in pbar:
     for feature_list, label_list in data_loader:
         # forward
-        label_list = label_list.repeat((n_seg,1)).permute(1,0).reshape(-1)
-        train_inputs = feature_list.float().reshape(-1,feature_list.shape[-1])
+        if configs["model_type"]=="dnn":
+            train_inputs = feature_list.float().reshape(-1,feature_list.shape[-1])
+            label_list = label_list.repeat((n_seg,1)).permute(1,0).reshape(-1)
+        elif configs["model_type"]=="cnn":
+            train_inputs = feature_list.float().reshape(-1,feature_list.shape[-2],feature_list.shape[-1])
+            train_inputs = train_inputs.unsqueeze(1)
+            label_list = label_list.repeat((n_seg,1)).permute(1,0).reshape(-1)
+        elif configs["model_type"]=="cnn2":
+            train_inputs = feature_list.float()
         # print(f"feature size: {feature_list.shape}->{train_inputs.shape}{label_list.shape}")
         train_inputs = torch.Tensor(train_inputs).to(device)
         train_labels = torch.LongTensor(label_list).to(device)
@@ -156,18 +163,21 @@ def train_step(model, data_loader, configs, device):
     train_avg_loss = sum(train_loss_list)/len(train_loss_list)
     train_accurary = np.sum(true_label_list == pre_label_list)/len(true_label_list)
 
-    # vote for one wav
-    wav_true_labels = []
-    for one_wav_labels in true_label_list.reshape(-1,n_seg):
-        wav_true_labels.append(np.argmax(np.bincount(one_wav_labels)))      # mode
-    wav_pre_labels = []
-    for one_wav_labels in pre_label_list.reshape(-1,n_seg):
-        wav_pre_labels.append(np.argmax(np.bincount(one_wav_labels)))
-    wav_true_labels = np.asarray(wav_true_labels)
-    wav_pre_labels = np.asarray(wav_pre_labels)
-    train_accurary_wav = np.sum(wav_true_labels == wav_pre_labels)/len(wav_true_labels)
+    if configs["model_type"]!="cnn2":
+        # vote for one wav
+        wav_true_labels = []
+        for one_wav_labels in true_label_list.reshape(-1,n_seg):
+            wav_true_labels.append(np.argmax(np.bincount(one_wav_labels)))      # mode
+        wav_pre_labels = []
+        for one_wav_labels in pre_label_list.reshape(-1,n_seg):
+            wav_pre_labels.append(np.argmax(np.bincount(one_wav_labels)))
+        wav_true_labels = np.asarray(wav_true_labels)
+        wav_pre_labels = np.asarray(wav_pre_labels)
+        train_accurary_wav = np.sum(wav_true_labels == wav_pre_labels)/len(wav_true_labels)
 
-    return train_avg_loss, train_accurary, train_accurary_wav
+        return train_avg_loss, train_accurary, train_accurary_wav
+    else:
+        return train_avg_loss, train_accurary
 
 def eval_step(model, data_loader, configs, device):
     model.eval()
@@ -180,8 +190,15 @@ def eval_step(model, data_loader, configs, device):
         # for feature_list, label_list in pbar:
         for feature_list, label_list in data_loader:
             # forward
-            label_list = label_list.repeat((n_seg,1)).permute(1,0).reshape(-1)
-            inputs = feature_list.float().reshape(-1,feature_list.shape[-1])
+            if configs["model_type"]=="dnn":
+                inputs = feature_list.float().reshape(-1,feature_list.shape[-1])
+                label_list = label_list.repeat((n_seg,1)).permute(1,0).reshape(-1)
+            elif configs["model_type"]=="cnn":
+                inputs = feature_list.float().reshape(-1,feature_list.shape[-2],feature_list.shape[-1])
+                inputs = inputs.unsqueeze(1)
+                label_list = label_list.repeat((n_seg,1)).permute(1,0).reshape(-1)
+            elif configs["model_type"]=="cnn2":
+                inputs = feature_list.float()
             # print(f"feature size: {feature_list.shape}->{inputs.shape}{label_list.shape}")
             inputs = torch.Tensor(inputs).to(device)
             true_labels = torch.LongTensor(label_list).to(device)
@@ -199,18 +216,21 @@ def eval_step(model, data_loader, configs, device):
     avg_loss = sum(loss_list)/len(loss_list)
     accurary = np.sum(true_label_list == pre_label_list)/len(true_label_list)
 
-    # vote for one wav
-    wav_true_labels = []
-    for one_wav_labels in true_label_list.reshape(-1,n_seg):
-        wav_true_labels.append(np.argmax(np.bincount(one_wav_labels)))      # mode
-    wav_pre_labels = []
-    for one_wav_labels in pre_label_list.reshape(-1,n_seg):
-        wav_pre_labels.append(np.argmax(np.bincount(one_wav_labels)))
-    wav_true_labels = np.asarray(wav_true_labels)
-    wav_pre_labels = np.asarray(wav_pre_labels)
-    accurary_wav = np.sum(wav_true_labels == wav_pre_labels)/len(wav_true_labels)
+    if configs["model_type"]!="cnn2":
+        # vote for one wav
+        wav_true_labels = []
+        for one_wav_labels in true_label_list.reshape(-1,n_seg):
+            wav_true_labels.append(np.argmax(np.bincount(one_wav_labels)))      # mode
+        wav_pre_labels = []
+        for one_wav_labels in pre_label_list.reshape(-1,n_seg):
+            wav_pre_labels.append(np.argmax(np.bincount(one_wav_labels)))
+        wav_true_labels = np.asarray(wav_true_labels)
+        wav_pre_labels = np.asarray(wav_pre_labels)
+        accurary_wav = np.sum(wav_true_labels == wav_pre_labels)/len(wav_true_labels)
 
-    return avg_loss, accurary, accurary_wav, wav_true_labels, wav_pre_labels
+        return avg_loss, accurary, accurary_wav, wav_true_labels, wav_pre_labels
+    else:
+        return avg_loss, accurary, true_label_list, pre_label_list
 
 def train(model, train_loader, dev_loader, configs, device, modelpath, max_epoch=200, early_stop=3):
     

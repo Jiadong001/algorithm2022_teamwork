@@ -3,7 +3,8 @@ Steps:
 - [ ] 特征增强,归一化?
 - [x] 独立特征MFCC做 Kmeans (flatten all frames' mfcc)
 - [x] 独立特征MFCC做 GMM , diag/full covariance
-- [ ] 做 DNN, 先MFCC，再底层特征fbanks/stft/signal
+- [x] 做 DenseNN, 先MFCC，再底层特征fbanks
+- [x] 做 CNN, 底层特征fbanks
 
 Settings:
 - window: hamming
